@@ -113,8 +113,8 @@ The lab server is only glue: it builds and runs the real projects, streams their
 ## Quick start
 
 ```
-git clone https://github.com/KardelRuveyda/sovereign-cloud-DevSummit.git
-cd sovereign-cloud-DevSummit
+git clone https://github.com/KardelRuveyda/sovereign-cloud-devsummit26.git
+cd sovereign-cloud-devsummit26
 lab\Start_Lab.cmd
 ```
 
