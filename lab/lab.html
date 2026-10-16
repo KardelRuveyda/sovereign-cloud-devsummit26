@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Leak Hunt Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#1e1e1e;--side:#252526;--tab:#2d2d2d;--line:#3c3c3c;--ink:#d4d4d4;--mute:#8b8b8b;--blue:#007acc;--kw:#569cd6;--str:#ce9178;--cm:#6a9955;--ty:#4ec9b0;--fn:#dcdcaa;--num:#b5cea8;--red:#f14c4c;--grn:#4ec96b;--amb:#e5c07b}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#000;overflow:clip;font-family:"Segoe UI",Arial,sans-serif;color:var(--ink)}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:var(--bg);overflow:clip}
+.mono{font-family:"Cascadia Mono","Cascadia Code",Consolas,"Courier New",monospace}
+#title{position:absolute;left:0;top:0;width:1920px;height:38px;background:#323233;display:flex;align-items:center;padding:0 14px;font-size:15px;color:#cccccc;border-bottom:1px solid #1b1b1b}
+#title .dots{display:flex;gap:8px;margin-right:18px}#title .dots i{width:13px;height:13px;border-radius:50%;background:#555}
+#title .menu span{margin-right:18px;color:#bbb}
+#title .ttl{position:absolute;left:0;right:0;text-align:center;pointer-events:none}
+#title .right{margin-left:auto;display:flex;gap:14px;align-items:center;z-index:2}
+.pill{font-size:14px;padding:3px 12px;border-radius:13px;border:1px solid #4ec96b;color:#4ec96b;display:flex;align-items:center;gap:8px}
+.pill.off{border-color:var(--red);color:var(--red);background:rgba(241,76,76,.12)}
+.pill.live{border-color:#007acc;color:#59b8ff}
+.wbtn{background:#3a3d41;border:1px solid #e2b93b;color:#e2b93b;border-radius:13px;padding:3px 14px;font:700 14px "Segoe UI",Arial,sans-serif;cursor:pointer;display:none}
+.wbtn:hover{background:#4a4326}.wbtn.on{border-color:#4ec96b;color:#4ec96b}.wbtn[disabled]{opacity:.5;cursor:wait}
+.pill.hint{border-color:#e2b93b;color:#e2b93b;background:rgba(226,185,59,.12);font-weight:700;animation:nh 1.4s ease-in-out infinite}
+.pill.hint.ok{border-color:#4ec96b;color:#4ec96b;background:rgba(78,201,107,.14);animation:none}
+@keyframes nh{50%{box-shadow:0 0 0 5px rgba(226,185,59,.35)}}
+#net{font-size:15px;font-weight:700}
+#net.off{animation:noff 1.2s ease-in-out 3}
+@keyframes noff{50%{box-shadow:0 0 0 6px rgba(241,76,76,.5)}}
+#side{position:absolute;left:0;top:38px;width:440px;height:990px;background:var(--side);border-right:1px solid #1b1b1b}
+#side h5{font-size:12px;letter-spacing:1.2px;font-weight:600;color:#bbb;padding:12px 18px}
+#tree{font-size:14.5px;line-height:22px;height:300px;overflow:auto}
+#tree::-webkit-scrollbar{width:8px}#tree::-webkit-scrollbar-thumb{background:#4a4a4e;border-radius:4px}
+#code.wrapmode .row{height:auto;min-height:calc(26px*var(--fz,1))}#code.wrapmode .row .c{white-space:pre-wrap;overflow-wrap:anywhere}
+#tree .it{padding-left:18px;white-space:nowrap;cursor:pointer;color:#ccc}
+#tree .it:hover{background:#2a2d2e}
+#tree .it.act{background:#37373d;color:#fff}
+#tree .dir{color:#fff;font-weight:600}
+#tree .ic{display:inline-block;width:20px;color:#8b8b8b;font-size:13px}
+#center{overflow:clip;position:absolute;left:440px;top:38px;width:1480px;height:990px}
+#tabs{height:40px;background:var(--side);display:flex;border-bottom:1px solid #1b1b1b}
+.tb{padding:0 20px;display:flex;align-items:center;gap:10px;font-size:15.5px;color:#a0a0a0;background:var(--tab);border-right:1px solid #1b1b1b;cursor:pointer;white-space:nowrap}
+.tb.act{background:var(--bg);color:#fff;border-top:2px solid var(--blue)}
+.tb .dot{width:10px;height:10px;border-radius:50%;background:#ddd;display:none}.tb.dirty .dot{display:block}
+#editor{overflow:clip;position:relative;height:505px;overflow:hidden;background:var(--bg);font-size:calc(17px*var(--fz,1));line-height:calc(26px*var(--fz,1))}
+#code{position:absolute;left:0;top:0;right:0;padding-top:8px}
+.row{display:flex;height:calc(26px*var(--fz,1));white-space:pre}
+.row .g{width:6px;flex:none}.row .n{width:60px;text-align:right;padding-right:22px;color:#6e7681;flex:none}
+.row .c{flex:1;overflow:hidden}
+.row.mod .g{background:#4ec96b}.row.sel{background:rgba(255,255,255,.12)}
+.row.hl{background:rgba(229,192,123,.16);box-shadow:inset 3px 0 0 var(--amb)}
+.row.flash{animation:fl 1.6s ease-out}
+@keyframes fl{0%{background:rgba(78,201,107,.45)}100%{background:transparent}}
+.k{color:var(--kw)}.s{color:var(--str)}.m{color:var(--cm)}.t{color:var(--ty)}.f{color:var(--fn)}.d{color:var(--num)}.h{color:#569cd6;font-weight:700}
+.pii{color:#ff6b6b;font-weight:700;background:rgba(241,76,76,.16);border-radius:3px}
+.caret{display:inline-block;width:2px;height:20px;background:#fff;vertical-align:-4px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+#keycap{position:absolute;right:40px;top:50px;display:none;gap:8px;z-index:5}
+#keycap b{font-family:"Cascadia Mono",Consolas,monospace;font-size:22px;background:#3a3a3d;border:1px solid #6b6b6b;border-bottom-width:4px;border-radius:8px;padding:6px 14px;color:#fff}
+#panel{overflow:clip;position:absolute;left:0;top:545px;width:1480px;height:445px;border-top:1px solid var(--blue);background:var(--bg);display:grid;grid-template-columns:46% 29% 25%}
+.pane{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;min-height:0;overflow:clip}
+.pane:last-child{border-right:none}
+.ph{height:32px;background:var(--side);font-size:12px;letter-spacing:1px;font-weight:600;color:#c5c5c5;display:flex;align-items:center;padding:0 14px;gap:10px;flex:none}
+.ph i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.ph .sub{margin-left:auto;font-weight:400;letter-spacing:0;color:#8b8b8b;text-transform:none}
+.pb{zoom:var(--fz,1);flex:1;min-height:0;overflow:hidden;font-size:14.5px;line-height:20px;padding:8px 12px;white-space:pre-wrap;word-break:break-word}
+.pb .p{color:#4ec9b0}.pb .cmd{color:#fff}.pb .gr{color:#7a7a7a}.pb .ok{color:var(--grn)}.pb .bad{color:var(--red)}.pb .y{color:var(--amb)}.pb .c2{color:#59b8ff}
+#inrow{zoom:var(--fz,1);flex:none;border-top:1px solid var(--line);display:flex;align-items:center;height:36px;padding:0 12px;gap:8px;background:#1b1b1b}
+#inrow span{color:var(--amb);font-weight:700}
+#inrow input{flex:1;background:transparent;border:none;outline:none;color:#fff;font:14.5px "Cascadia Mono",Consolas,monospace}
+#status{position:absolute;left:0;top:1028px;width:1920px;height:52px;background:var(--blue);display:flex;align-items:center;padding:0 18px;color:#fff;font-size:15px;gap:26px}
+#status .cap{font-size:21px;font-weight:600;flex:1}
+#status .step{font-weight:700;letter-spacing:1px;opacity:.9}
+#status .hint{font-size:13px;opacity:.85;text-align:right;line-height:1.35}
+#doc{position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;background:var(--bg);padding:16px 44px;display:none;font-size:calc(16px*var(--fz,1));line-height:1.4}
+#doc h1{font-size:30px;margin-bottom:6px}#doc h2{font-size:19px;margin:10px 0 5px;color:#59b8ff}
+#doc table{border-collapse:collapse;font-size:calc(15px*var(--fz,1));margin-top:4px}#doc td,#doc th{border:1px solid #444;padding:3px 14px;text-align:left}#doc th{background:#2d2d2d;color:#bbb;font-weight:600}
+#doc .g2{color:var(--grn);font-weight:700}#doc .r2{color:var(--red);font-weight:700}#doc .m2{color:#8b8b8b}
+#overlay{position:absolute;inset:0;background:rgba(0,0,0,.8);z-index:50;display:none;align-items:center;justify-content:center;font-size:30px;color:#fff;text-align:center;line-height:1.5}
+
+#guide{position:absolute;left:0;top:348px;width:440px;height:642px;border-top:2px solid var(--blue);background:#1b2631;padding:14px 20px;overflow:hidden}
+.gh{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1.5px;color:#59b8ff;font-weight:700}
+#gtitle{font-size:27px;font-weight:700;color:#fff;margin:6px 0 12px}
+.gi{display:flex;gap:11px;font-size:17px;line-height:1.35;margin-bottom:9px;color:#e8e8e8}
+.gi>b{flex:none;width:24px;height:24px;border-radius:50%;background:#007acc;color:#fff;text-align:center;line-height:24px;font-size:14px;margin-top:1px}
+.chip{display:inline-block;background:#0e3a5c;border:1px solid #59b8ff;color:#cfeaff;border-radius:6px;padding:0 8px;cursor:pointer;font-family:"Cascadia Mono",Consolas,monospace;font-size:15px}
+.chip{white-space:normal;line-height:1.3}.tip{font-size:14px;color:#8fb7d6;margin:4px 0 0 35px}.chip:hover{background:#17609a}
+kbd{display:inline-block;background:#3a3a3d;border:1px solid #6b6b6b;border-bottom-width:3px;border-radius:5px;padding:0 7px;font-family:"Cascadia Mono",Consolas,monospace;font-size:14px;color:#fff}
+#gcode{background:#141414;border:1px solid #3c3c3c;border-radius:6px;padding:8px 10px;font-size:13.5px;line-height:20px;margin:8px 0;white-space:pre-wrap;word-break:break-all}
+#gcode .add{background:rgba(78,201,107,.18);color:#9be7ad}#gcode .del{background:rgba(241,76,76,.18);color:#ff9b9b}
+#glook{font-size:15px;color:#b8c4d0;border-left:3px solid #e5c07b;padding-left:10px;margin-top:10px;line-height:1.4}
+#glook b{color:#e5c07b}
+#gprog{position:absolute;left:20px;bottom:12px;display:flex;gap:7px}
+#gprog i{font-style:normal;width:30px;height:30px;border-radius:50%;border:1px solid #4a5a6a;color:#8b9aa8;text-align:center;line-height:28px;font-size:14px}
+#gprog i.done{background:#3a3f45;border-color:#6b7480;color:#b4bcc6;cursor:pointer}#gprog i.done:hover{background:#4a525b;color:#fff;border-color:#9aa5b1}#gprog i.todo{opacity:.55}#gprog i.cur{background:#007acc;border-color:#59b8ff;color:#fff;font-weight:700}
+#cw{position:absolute;left:0;top:0;right:0;bottom:0}
+#ed{position:absolute;left:88px;top:8px;right:0;border:0;outline:0;background:transparent;color:transparent;caret-color:#fff;resize:none;overflow:hidden;white-space:pre;font:inherit;line-height:calc(26px*var(--fz,1));padding:0;margin:0;tab-size:4;z-index:2;display:none}
+#ed::selection{background:rgba(38,120,200,.55);color:transparent}
+#tabrow{display:flex;height:40px;background:var(--side);border-bottom:1px solid #1b1b1b}
+#tabrow #tabs{flex:1;border-bottom:none;overflow:hidden}
+#tools{display:flex;align-items:center;gap:8px;padding:0 10px}
+#tools button{background:#3a3d41;border:1px solid #5a5d62;color:#fff;border-radius:5px;padding:5px 12px;font:600 13px "Segoe UI",Arial,sans-serif;cursor:pointer}
+#tools button:hover{background:#0e639c}
+.row .n{cursor:pointer}.row .n:hover{color:#fff;background:#0e639c33}
+#bChg{background:#1f7a3d!important;border-color:#4ec96b!important}#bChg:hover{background:#2a9a50!important}
+#bSave.pulse{animation:pl 1s ease-in-out 4;background:#0e639c}
+@keyframes pl{50%{box-shadow:0 0 0 6px rgba(89,184,255,.6)}}
+.chip.go{background:#1f7a3d;border-color:#4ec96b;color:#fff;font-family:"Segoe UI",Arial,sans-serif;font-weight:700}
+#clrMon{margin-left:8px;background:#3a3d41;border:1px solid #5a5d62;color:#fff;border-radius:4px;padding:1px 9px;font:600 11px "Segoe UI",Arial,sans-serif;cursor:pointer;letter-spacing:0}
+#clrMon:hover{background:#0e639c}
+
+.zoomctl{display:flex;align-items:center;gap:4px;margin-right:14px}
+.zoomctl button,.mag{background:#3a3d41;border:1px solid #5a5d62;color:#fff;border-radius:5px;font:600 13px "Segoe UI",Arial,sans-serif;cursor:pointer;padding:2px 9px}
+.zoomctl button:hover,.mag:hover{background:#0e639c}
+.zoomctl span{min-width:46px;text-align:center;font-size:13px;color:#ddd}
+.mag{padding:0 8px;line-height:20px;margin-left:6px}
+.pane.focus,#editor.focus{position:fixed!important;left:0;top:38px;width:1920px!important;height:990px!important;z-index:60;background:var(--bg);box-shadow:0 0 0 3px var(--blue)}
+.done-banner{margin-top:14px;padding:12px 14px;border:1px solid #4ec96b;border-radius:8px;background:#14301f;color:#c8f2d5;font-size:17px;font-weight:700;line-height:1.35}
+.restart{display:block;width:100%;margin-top:12px;background:#1f7a3d;border:1px solid #4ec96b;color:#fff;border-radius:8px;padding:10px 16px;font:700 18px "Segoe UI",Arial,sans-serif;cursor:pointer;text-align:center}
+.restart:hover{background:#2a9a50}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="title">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="menu"><span>File</span><span>Edit</span><span>View</span><span>Run</span><span>Terminal</span><span>Help</span></div>
+    <div class="ttl" id="ttl">LeakHunt - Lab</div>
+    <div class="right"><div class="zoomctl" title="Text size (Ctrl and plus or minus, Ctrl 0 resets)"><button id="zOut">A&minus;</button><span id="zVal">100%</span><button id="zIn">A+</button></div><div class="pill live">LIVE: real build, real app, real monitors</div><button class="wbtn" id="wifiBtn" title="Turns the real Wi-Fi radio off or on">Turn Wi-Fi OFF</button><div class="pill hint" id="nethint" style="display:none"></div><div class="pill" id="net"><span id="nettxt">Network: online</span></div></div>
+  </div>
+  <div id="side"><h5>EXPLORER: LEAKHUNT</h5><div id="tree" class="mono"></div><div id="guide"><div class="gh"><span>LAB GUIDE: WHAT TO DO NOW</span><span id="gstep"></span></div><div id="gtitle"></div><div id="gdo"></div><div id="gcode" class="mono"></div><div id="glook"></div><div id="gprog"></div></div></div>
+  <div id="center">
+    <div id="tabrow"><div id="tabs"></div><div id="tools"><button id="bMag" title="Magnify the editor (Esc to close)">&#128269; Editor</button><button id="bChg">Change: Cloud to Local</button><button id="bTog">Comment / uncomment line (Ctrl+/)</button><button id="bSave">Save (Ctrl+S)</button><button id="bRev">Revert</button></div></div>
+    <div id="editor" class="mono"><div id="cw"><div id="code"></div><textarea id="ed" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea></div><div id="doc"></div><div id="keycap"></div></div>
+    <div id="panel">
+      <div class="pane"><div class="ph"><i style="background:#4ec96b"></i>TERMINAL <select id="mdl" title="Model used when the app runs locally" style="background:#252526;color:#ddd;border:1px solid #3c3c3c;font:11px Consolas,monospace;margin-left:8px"><option>phi-3.5-mini</option><option>phi-4-mini</option><option>qwen2.5-1.5b</option></select> <span class="sub" id="appsub">powershell</span><button class="mag" data-focus="1" title="Magnify this pane (Esc to close)">&#128269;</button></div><div class="pb mono" id="app"></div><div id="inrow" class="mono"><span>?</span><input id="typed" placeholder="press the Up arrow to fill the suggested text, then Enter"></div></div>
+      <div class="pane"><div class="ph"><i style="background:#f14c4c"></i>EGRESS TRAFFIC MONITOR <button id="clrMon">Clear</button> <span class="sub" id="monsub">idle</span><button class="mag" data-focus="1" title="Magnify this pane (Esc to close)">&#128269;</button></div><div class="pb mono" id="mon" style="font-size:13px;line-height:18px"></div></div>
+      <div class="pane"><div class="ph"><i style="background:#59b8ff"></i>EGRESS CONNECTIONS <span class="sub">host</span><button class="mag" data-focus="1" title="Magnify this pane (Esc to close)">&#128269;</button></div><div class="pb mono" id="conn" style="font-size:12.5px;line-height:18px"></div></div>
+    </div>
+  </div>
+  <div id="status"><div class="step" id="stp"></div><div class="cap" id="cap"></div><div class="hint">&rarr; next &nbsp; &larr; back &nbsp; R reset &nbsp; Ctrl +/- text size &nbsp; Esc close magnifier</div></div>
+  <div id="overlay"></div>
+</div>
+<script>
+const $=(s,r=document)=>r.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function fit(){ const k=Math.min(innerWidth/1920,innerHeight/1080), st=$('#stage'); st.style.transform=`scale(${k})`; st.style.left=((innerWidth-1920*k)/2)+'px'; st.style.top=((innerHeight-1080*k)/2)+'px'; }
+addEventListener('resize',fit); fit(); addEventListener('scroll',()=>{scrollTo(0,0)},true); setInterval(()=>{ for(const e of [document.documentElement,document.body,document.getElementById('stage'),document.getElementById('center'),document.getElementById('panel')]){ if(e&&(e.scrollTop||e.scrollLeft)){ e.scrollTop=0; e.scrollLeft=0; } } },200);
+
+/* ---------- syntax highlight ---------- */
+const KW=new Set('using var new await async static class public private return try catch throw if else foreach for while in null const readonly sealed record true false out ref string int bool void double get set namespace is as this'.split(' '));
+function hl(line,kind){
+  if(kind==='md'){ if(/^#/.test(line)) return '<span class="h">'+esc(line)+'</span>'; if(/^\|/.test(line)) return '<span class="t">'+esc(line)+'</span>'; return esc(line); }
+  const rx=/(\/\/.*$|#.*$)|("(?:[^"\\]|\\.)*")|(\$[A-Za-z_]\w*)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g; let out='',last=0,m;
+  while((m=rx.exec(line))){ out+=esc(line.slice(last,m.index)); last=rx.lastIndex;
+    if(m[1]){ if(kind==='ps1'||m[1][0]==='/') out+='<span class="m">'+esc(m[1])+'</span>'; else out+=esc(m[1]); }
+    else if(m[2]) out+='<span class="s">'+esc(m[2])+'</span>';
+    else if(m[3]) out+='<span class="t">'+esc(m[3])+'</span>';
+    else if(m[4]) out+='<span class="d">'+m[4]+'</span>';
+    else { const w=m[5]; const nx=line[rx.lastIndex]; if(KW.has(w)) out+='<span class="k">'+w+'</span>'; else if(/^[A-Z]/.test(w)) out+=nx==='('?'<span class="f">'+w+'</span>':'<span class="t">'+w+'</span>'; else out+=esc(w); } }
+  return out+esc(line.slice(last));
+}
+const kindOf=p=>/\.md$/.test(p)?'md':/\.ps1$/.test(p)?'ps1':'cs';
+
+/* ---------- ansi (monitor output) ---------- */
+const AN={'1':'font-weight:700','90':'color:#8b8b8b','91':'color:#ff6b6b','92':'color:#4ec96b','93':'color:#e5c07b','96':'color:#59b8ff'};
+function ansi(s){ let out='',open=false; const parts=s.split(/\x1b\[([0-9;]*)m/); for(let i=0;i<parts.length;i++){ if(i%2===0) out+=esc(parts[i]); else { if(open){ out+='</span>'; open=false; } const st=parts[i].split(';').map(c=>AN[c]||'').filter(Boolean).join(';'); if(st){ out+='<span style="'+st+'">'+''; open=true; } } } if(open) out+='</span>'; return out; }
+const stripAnsi=s=>s.replace(/\x1b\[[0-9;]*m/g,'');
+
+/* ---------- files / tabs ---------- */
+const files={}, baseline={}; let tabs=[], active=null, treeList=[];
+async function getFile(p,fresh){ if(files[p]!==undefined&&!fresh) return files[p]; const j=await fetchJson('/api/file?p='+encodeURIComponent(p)); files[p]=j.text; if(baseline[p]===undefined) baseline[p]=j.text; return files[p]; }
+const folded=new Set(); let treeInit=false;
+const iconOf=p=>/\.cs$/.test(p)?'C#':/\.md$/.test(p)?'md':/\.ps1$/.test(p)?'ps':/\.js$/.test(p)?'JS':/\.cmd$/.test(p)?'>_':/\.json$/.test(p)?'{}':'::';
+function renderTree(){ const t=$('#tree'); const list=treeList.filter(p=>!/\.slnx$/.test(p));
+  if(!treeInit&&list.length){ treeInit=true; list.forEach(p=>{ const a=p.split('/'); for(let i=1;i<a.length;i++){ const d=a.slice(0,i).join('/'); if(d!=='LeakHunt.App') folded.add(d); } }); }
+  const root={dirs:{},files:[]}; list.forEach(p=>{ const a=p.split('/'); let n=root; a.slice(0,-1).forEach(d=>{ n=n.dirs[d]=n.dirs[d]||{dirs:{},files:[]}; }); n.files.push(p); });
+  let h=''; (function walk(n,pref,depth){ Object.keys(n.dirs).sort((x,y)=>x==='LeakHunt.App'?-1:y==='LeakHunt.App'?1:x.localeCompare(y)).forEach(d=>{ const path=(pref?pref+'/':'')+d, f=folded.has(path); h+=`<div class="it dir" data-d="${esc(path)}" style="padding-left:${18+depth*16}px"><span class="ic">${f?'>':'v'}</span>${esc(d)}</div>`; if(!f) walk(n.dirs[d],path,depth+1); }); n.files.sort().forEach(p=>{ const name=p.split('/').pop(); h+=`<div class="it ${active===p?'act':''}" data-p="${esc(p)}" style="padding-left:${18+depth*16}px"><span class="ic">${iconOf(p)}</span>${esc(name)}</div>`; }); })(root,'',0);
+  t.innerHTML=h; $$('.it[data-p]').forEach(e=>e.onclick=()=>{ hlSet=new Set(); selSet=new Set(); openFile(e.dataset.p).then(()=>setOff(0)); }); $$('.it[data-d]').forEach(e=>e.onclick=()=>{ const d=e.dataset.d; if(folded.has(d)) folded.delete(d); else folded.add(d); renderTree(); }); }
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+function renderTabs(){ $('#tabs').innerHTML=tabs.map(t=>`<div class="tb ${active===t.id?'act':''} ${t.dirty?'dirty':''}" data-id="${esc(t.id)}"><span>${esc(t.title)}</span><span class="dot"></span></div>`).join(''); $$('.tb').forEach(e=>e.onclick=()=>showTab(e.dataset.id)); $('#ttl').textContent=(tabs.find(t=>t.id===active)||{title:''}).title+' - LeakHunt - Lab'; }
+async function openFile(p){ await getFile(p); if(!tabs.find(t=>t.id===p)){ const nm=p.split('/').pop(); const dup=treeList.filter(x=>x.split('/').pop()===nm).length>1; tabs.push({id:p,title:dup?p.split('/').slice(-2).join('/'):nm,file:true}); } showTab(p); }
+function openVirtual(id,title,html){ let t=tabs.find(x=>x.id===id); if(!t){ t={id,title,virtual:true}; tabs.push(t); } t.html=html; showTab(id); }
+function showTab(id){ active=id; const t=tabs.find(x=>x.id===id); renderTabs(); renderTree(); if(t&&t.virtual){ $('#ed').style.display='none'; $('#code').style.display='none'; const d=$('#doc'); d.style.display='block'; d.innerHTML=t.html; } else { $('#doc').style.display='none'; $('#code').style.display='block'; renderEditor(); } }
+function renderEditor(flash){ const t=tabs.find(x=>x.id===active); if(!t||!t.file) return; $('#code').classList.toggle('wrapmode',active!=='LeakHunt.App/Program.cs'); if(files[active]===undefined){ getFile(active).then(()=>renderEditor()).catch(()=>{}); return; } const lines=files[active].split(/\r?\n/); { const ta=$('#ed'), ed=active==='LeakHunt.App/Program.cs'; ta.style.display=ed?'block':'none'; if(ed){ if(ta.value.replace(/\r/g,'')!==files[active].replace(/\r/g,'')) ta.value=files[active]; ta.style.height=(lines.length*RH()+16)+'px'; } } const base=(baseline[active]||'').split(/\r?\n/), k=kindOf(active); $('#code').innerHTML=lines.map((l,i)=>`<div class="row ${base[i]!==l?'mod':''} ${flash&&flash.includes(i)?'flash':''} ${hlSet.has(i)?'hl':''} ${selSet.has(i)?'sel':''} " data-i="${i}"><span class="g"></span><span class="n">${i+1}</span><span class="c">${hl(l,k)||' '}</span></div>`).join(''); }
+let hlSet=new Set(), selSet=new Set();
+let scrollOff=0; function setOff(v,anim){ const n=$('#code').offsetHeight+16; const max=Math.max(0,n-$('#editor').clientHeight); scrollOff=Math.max(0,Math.min(v,max)); const c=$('#cw'); c.style.transition=anim?'transform .5s':'none'; c.style.transform=`translateY(${-scrollOff}px)`; }
+function scrollToLine(i){ setOff(i*RH()-120,true); }
+function keycap(keys,ms=900){ const k=$('#keycap'); k.innerHTML=keys.map(x=>`<b>${x}</b>`).join(''); k.style.display='flex'; return sleep(ms).then(()=>k.style.display='none'); }
+
+/* ---------- terminals ---------- */
+const app=$('#app'), mon=$('#mon'), conn=$('#conn');
+const PS='PS LeakHunt> ';
+function w(el,html){ el.insertAdjacentHTML('beforeend',html); el.scrollTop=el.scrollHeight; }
+function trim(el,max=400){ while(el.childNodes.length>max) el.removeChild(el.firstChild); }
+async function typeCmd(cmd,speed=30){ w(app,`\n<span class="p">${PS}</span>`); for(const ch of cmd){ w(app,`<span class="cmd">${esc(ch)}</span>`); await sleep(speed+Math.random()*25); } w(app,'\n'); }
+async function typeQ(q,speed=28){ for(const ch of q){ w(app,esc(ch)); await sleep(speed+Math.random()*20); } w(app,'\n'); }
+
+/* ---------- live data + metrics ---------- */
+const M={ev:[],asks:[],ext:[],outbound:[],model:'',mode:'cloud',build:[],net:null};
+const T0=()=>Date.now();
+let sse, waitFor=null, awaiting=null, lastMonBlock='', monBuf='';
+function onEvent(e){
+  switch(e.src){
+    case 'app': { w(app,esc(e.text.replace(/\r/g,''))); trim(app); const m=e.text.match(/Model loaded on this device: (.+)/); if(m) M.model=m[1].trim(); if(awaiting){ if(!awaiting.first) awaiting.first=e.ts; if(/sources:/.test(e.text)){ awaiting.done=e.ts; if(awaiting.mode==='local'&&step>=5){ w(mon,'<span style=\"color:#4ec96b\">Local answer: 0 requests reached the gateway. Nothing left this machine.</span>\n'); } if(!online&&step===6) setHint('ok','Answered while OFFLINE: nothing needed the internet.'); awaiting.resolve(); awaiting=null; } } break; }
+    case 'build': w(app,`<span class="gr">${esc(e.text)}</span>\n`); break;
+    case 'monitor': { w(mon,ansi(e.text)); trim(mon,300); monBuf+=e.text; if(/OUTBOUND #/.test(e.text)){ $('#monsub').textContent=(M.outbound.length+1-(M.clearBase||0))+' request(s)'; } if(/DETECTED IN THIS REQUEST/.test(monBuf)){ const i=monBuf.lastIndexOf('OUTBOUND #'); lastMonBlock=monBuf.slice(i); M.outbound.push({ts:e.ts,block:lastMonBlock}); monBuf=''; gotOutbound&&gotOutbound(); if(MAN&&M.outbound.length===1) openVirtual('outbound','outbound-request.txt','<div class="mono" style="font-size:16px;line-height:23px;white-space:pre-wrap">'+ansi(lastMonBlock)+'</div>'); } break; }
+    case 'conn': { const ext=/EXTERNAL/.test(e.text); w(conn,`<span class="${ext?'bad':'ok'}">${esc(e.text.replace(/\s+/g,' '))}</span>\n`); trim(conn,60); if(ext) M.ext.push({ts:e.ts,text:e.text}); break; }
+    case 'net': setNet(e.online,e.ts); break;
+    case 'state': { if(e.text==='ready'){ M.ev.push(['ready',e.ts]); if(waitFor&&waitFor.k==='ready'){ const f=waitFor.res; waitFor=null; f(e); } } if(e.text==='build-ok'||e.text==='build-fail'){ M.build.push({sec:e.sec,ok:e.text==='build-ok',mode:M.mode}); if(waitFor&&waitFor.k==='build'){ const f=waitFor.res; waitFor=null; f(e); } } break; }
+    case 'code': break;
+    case 'reset': break;
+  }
+}
+let gotOutbound=null;
+const waitState=(k,ms=240000)=>new Promise((res,rej)=>{ waitFor={k,res}; setTimeout(()=>{ if(waitFor&&waitFor.k===k){ waitFor=null; rej(new Error('timeout '+k)); } },ms); });
+function connect(){ sse=new EventSource('/events'); sse.onmessage=m=>{ const e=JSON.parse(m.data); if(e.src!=='hello') onEvent(e); }; }
+let online=true, plugWait=false;
+function updWifiBtn(){ const b=$('#wifiBtn'); if(!b) return; const show=(step>=6)||!online; b.style.display=show?'block':'none'; b.classList.toggle('on',!online); b.textContent=online?'Turn Wi-Fi OFF':'Turn Wi-Fi ON'; }
+async function wifiToggle(){ const b=$('#wifiBtn'); if(b.disabled) return; const act=online?'off':'on'; b.disabled=true; b.textContent=act==='off'?'Turning Wi-Fi off...':'Turning Wi-Fi on...'; let st='error'; try{ const r=await post('/api/wifi',{action:act}); st=(await r.json()).wifi; }catch(_){} b.disabled=false; if(st==='denied'||st==='none'||st==='error'||String(st).startsWith('error')){ $('#cap').textContent='Could not switch Wi-Fi from here ('+st+'). Turn it off yourself: Windows quick settings or airplane mode.'; } updWifiBtn(); }function setHint(cls,text){ const h=$('#nethint'); if(!h) return; if(!text){ h.style.display='none'; return; } h.className='pill hint'+(cls?' '+cls:''); h.textContent=text; h.style.display='flex'; }function setNet(on,ts){ online=on; updWifiBtn(); $('#net').classList.toggle('off',!on); $('#nettxt').textContent=on?'Network: online':'Network: OFFLINE'; if(!on){ M.net={ts}; if(step===6) setHint('','Network is OFFLINE. Press Enter to ask.'); } else if(step===6&&M.net) setHint('ok','Network is back online.'); if(!on&&plugWait){ plugWait=false; setHint(); setTimeout(()=>ask(Q2),1500); } }
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+
+const Q1='What is the board-approved walk-away price for the Fabrikam deal?', Q2="What is Elif Demir's gross monthly salary?";
+async function ask(q){ const a={q,t0:Date.now(),first:0,done:0}; a.promise=new Promise(r=>a.resolve=r); awaiting=a; await typeQ(q); a.t0=Date.now(); M.asks.push(a); M.asks[M.asks.length-1].mode=M.mode; await post('/api/ask',{text:q}); await a.promise; return a; }
+
+/* ---------- steps ---------- */
+﻿let step=0, tok=0; const MAN=true; const QS={Q1,Q2};
+const chip=(t,f)=>`<span class="chip" data-fill="${f||t}">${t}</span>`, qchip=(t,q)=>`<span class="chip" data-q="${q}">${esc(QS[q])}</span>`;
+const GUIDE=[
+ {t:'Meet the app', cap:'Read Program.cs: it searches the documents, builds a prompt and sends it to a model.',
+  d:['This is <b>LeakHunt</b>: a .NET assistant that answers questions from company documents (the <b>docs</b> folder).','<b>Program.cs</b> on the right is the whole loop: search the docs, build a prompt, call a model.','Line 5 chooses <b>where the prompt goes</b>. Right now: <b>Cloud()</b>.'],
+  code:['IChatClient chat = Backend.Cloud();','// IChatClient chat = await Backend.LocalAsync();'], look:'<b>Look at:</b> the highlighted line 5 in the editor. Press <kbd>&rarr;</kbd> for the next step.'},
+ {t:'Read the backend code', cap:'Backend.cs: three ways to get a model, one IChatClient interface. Cloud() sends the prompt out.',
+  d:['<b>Backend.cs</b> is open. Three methods return the <b>same</b> IChatClient.','<b>Cloud()</b> builds a client for an HTTP endpoint: the prompt leaves the app as a web request.','Local and Edge only change the address and the model. The app code above does not change.'],
+  code:['.GetChatClient(model).AsIChatClient();'], look:'<b>Look at:</b> highlighted lines of Cloud() in the editor.'},
+ {t:'Build and run', cap:'YOUR TURN: in the terminal run  dotnet build  then  dotnet run.',
+  d:['Click the input at the bottom of the Terminal, or click a blue chip: '+chip('dotnet build')+' then <kbd>Enter</kbd>.','Then '+chip('dotnet run')+' and <kbd>Enter</kbd>.','The app starts and prints which backend it uses.'],
+  look:'<b>Look at:</b> Terminal: <b>Build succeeded</b>, then <b>CLOUD gpt-4o-mini -&gt; http://127.0.0.1:5099/v1</b>.'},
+ {t:'Hunt: what leaves?', cap:'YOUR TURN: ask the question and watch the Egress Traffic Monitor (middle pane).',
+  d:['Click the chip '+qchip('ask the Fabrikam question','Q1')+' and press <kbd>Enter</kbd>.','The <b>Egress Traffic Monitor</b> (middle) shows the complete request that left the app.','A tab <b>outbound-request.txt</b> opens: sensitive items are marked in red.'],
+  look:'<b>Note:</b> the monitor stands in for a corporate egress proxy or AI gateway. The cloud side is a stand-in (mock), no real provider is called.'},
+ {t:'Fix: change one line', cap:'YOUR TURN: click Change: Cloud to Local, then Save, then build and run.',
+  d:['Click the green <span class="chip go" data-act="change">Change: Cloud to Local</span> button (here or above the editor). Line 5 gets <b>//</b>, line 6 is activated.','Click <b>Save</b> above the editor (or <kbd>Ctrl</kbd>+<kbd>S</kbd>). The tab dot disappears.','Terminal: '+chip('dotnet build')+' <kbd>Enter</kbd>, then '+chip('dotnet run')+' <kbd>Enter</kbd>. The model loads on this laptop: about 15 seconds (NPU models take up to a minute).','Want to edit by hand? Click a line number to toggle // or type in the editor. <b>Revert</b> restores the file.'],
+  code:['- IChatClient chat = Backend.Cloud();','+ IChatClient chat = await Backend.LocalAsync();'], look:'<b>Look at:</b> Terminal: <b>Model loaded on this device</b> and <b>LOCAL ... http://127.0.0.1:port/v1</b>.'},
+ {t:'Prove it', cap:'YOUR TURN: ask the same question. The monitor must stay quiet.',
+  d:['Ask again: '+qchip('Fabrikam question','Q1')+' <kbd>Enter</kbd>. The answer comes from the local model.','Middle pane: <b>no new request</b>. The counter stays at its old value.'],
+  look:'<b>Honest detail:</b> while the model loads, the SDK opens HTTPS connections to Microsoft (right pane). The prompt itself never goes there.'},
+ {t:'Pull the plug', cap:'YOUR TURN: turn the network off yourself, then ask a different question.',
+  d:['Click the amber <b>Turn Wi-Fi OFF</b> button at the top right. The pill next to it turns <b>OFFLINE</b> within a few seconds. (If the button cannot switch it, turn Wi-Fi off yourself.)','Ask something else: '+qchip('salary question','Q2')+' <kbd>Enter</kbd>.','It still answers: the model and the documents are on this machine.','<b>What this proves:</b> if any part of the answer needed the internet (a cloud model, a remote search), it would fail now. It does not, so the whole loop runs locally.'],
+  look:'<b>Look at:</b> the answer arrives with the network really gone. Press <b>Turn Wi-Fi ON</b> afterwards.'},
+ {t:'Results', cap:'COMPLETED: all steps are done. The report was computed from what really happened. Restart the lab to run it again.',
+  d:['The <b>run-report.md</b> tab is built from real events: build output, traffic monitor, connection monitor and network probe.','The <b>model-comparison.md</b> tab compares small models on 13 questions: accuracy, wrong answers on questions the documents cannot answer, speed and memory.','Click <b>Restart the lab</b> (or press <kbd>R</kbd>) to run it again.'], look:''}
+];
+function setStep(){ updWifiBtn(); $('#stp').textContent=`STEP ${step} / 7`; $('#cap').textContent=GUIDE[step].cap; history.replaceState(null,'','#'+step); }
+function renderGuide(){ const g=GUIDE[step]; $('#gstep').textContent='STEP '+step+' OF 7'; $('#gtitle').textContent=g.t; $('#gdo').innerHTML=g.d.map((x,i)=>`<div class="gi"><b>${i+1}</b><span>${x}</span></div>`).join(''); const c=$('#gcode'); c.style.display=g.code?'block':'none'; c.innerHTML=(g.code||[]).map(l=>`<div class="${l[0]==='-'?'del':l[0]==='+'?'add':''}">${esc(l)}</div>`).join(''); if(step===7){ $('#gdo').insertAdjacentHTML('beforeend','<div class="done-banner">Completed. All steps are done.</div><button class="restart" id="restartBtn">Restart the lab</button>'); } if(step>=2&&step<=6){ $('#gdo').insertAdjacentHTML('beforeend','<div class="tip">The suggested text is already selected in the terminal input: just press <kbd>Enter</kbd>. <kbd>&uarr;</kbd> brings back earlier text.</div>'); } $('#glook').style.display=g.look?'block':'none'; $('#glook').innerHTML=g.look; $('#gprog').innerHTML=GUIDE.map((_,i)=>`<i data-s="${i}" class="${i<step?'done':i===step?'cur':'todo'}" title="${esc(GUIDE[i].t)}">${i}</i>`).join(''); }
+function resetPanes(){ app.innerHTML=''; mon.innerHTML=''; conn.innerHTML=''; $('#monsub').textContent='idle'; M.ev=[];M.asks=[];M.ext=[];M.outbound=[];M.model='';M.build=[];M.net=null;M.fixTs=0;M.clearBase=0; M.mode='cloud'; monBuf=''; lastMonBlock=''; awaiting=null; waitFor=null; plugWait=false; setHint(); hlSet=new Set(); selSet=new Set(); setOff(0); w(app,`<span class="gr">Leak Hunt Lab terminal. Commands below are the real ones being executed.</span>`); }
+let resetting=null;
+async function fetchJson(url,tries=5){ let last; for(let i=0;i<tries;i++){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(url+' returned '+r.status); return await r.json(); }catch(e){ last=e; await sleep(500*(i+1)); } } throw last; }
+async function loadExplorer(){ treeList=await fetchJson('/api/tree'); renderTree(); }
+function reset(){ if(resetting) return resetting; resetting=(async()=>{ try{ tok++; resetPanes(); Object.keys(files).forEach(k=>delete files[k]); Object.keys(baseline).forEach(k=>delete baseline[k]); tabs=[]; active=null; try{ await post('/api/reset'); }catch(_){} await sleep(900); await loadExplorer(); await openFile('LeakHunt.App/Program.cs'); markCloud(); } finally { resetting=null; } })(); return resetting; }
+/* self-heal: if the explorer or the editor ever ends up empty, load them again */
+setInterval(async()=>{ if(resetting||jumping) return; try{ if(!document.querySelectorAll('#tree .it').length){ await loadExplorer(); } if(!tabs.length&&treeList.length&&step<7){ await openFile('LeakHunt.App/Program.cs'); } }catch(_){} },3000);
+function markCloud(){ const ln=files['LeakHunt.App/Program.cs'].split(/\r?\n/); const i=ln.findIndex(l=>/IChatClient chat = /.test(l)&&/Backend\./.test(l)); hlSet=new Set([i]); renderEditor(); }
+async function runStep(s){ const my=++tok; clearFocus(); step=s; setStep(); renderGuide(); const rep=s===7; $('#panel').style.display=rep?'none':'grid'; $('#editor').style.height=rep?'950px':'505px'; setHint(); plugWait=false;
+ try{
+  if(s===0){ await reset(); }
+  else if(s===1){ await openFile('LeakHunt.App/Backend.cs'); const ln=files['LeakHunt.App/Backend.cs'].split(/\r?\n/); const i=ln.findIndex(l=>/public static IChatClient Cloud\(\)/.test(l)); hlSet=new Set([i,i+1,i+2,i+3,i+4,i+5]); renderEditor(); scrollToLine(i); }
+  else if(s===7){ openVirtual('report','run-report.md',report()); openVirtual('compare','model-comparison.md',await compareHtml()); showTab('report'); }
+  else { files['LeakHunt.App/Program.cs']=await getFile('LeakHunt.App/Program.cs',true); await openFile('LeakHunt.App/Program.cs'); showTab('LeakHunt.App/Program.cs'); setOff(0); hlSet=new Set(); if(s===2) markCloud(); if(s===4){ const ln=files['LeakHunt.App/Program.cs'].split(/\r?\n/); hlSet=new Set(ln.map((l,i)=>/IChatClient chat = /.test(l)&&/Backend\.(Cloud|LocalAsync)\(\)/.test(l)?i:-1).filter(i=>i>=0)); } renderEditor(); if(s===5||s===6){ clearMon('Cleared for this step. Request #1 stays in the outbound-request.txt tab. Watching for new requests...'); } if(s===6){ setHint(online?'':'', online?'Step 6: click Turn Wi-Fi OFF (top right)':'Network is OFFLINE. Press Enter to ask.'); } suggest(({2:'dotnet build',3:Q1,4:'dotnet build',5:Q1,6:Q2})[s]); }
+ }catch(err){ $('#cap').textContent='Something failed: '+err.message+'  (press R to reset)'; }
+}
+function go(d){ if(jumping) return; const n=Math.max(0,Math.min(7,step+d)); if(n===step) return; runStep(n); }
+
+
+/* ---------- manual editing ---------- */
+let anchor=null;
+async function applyChange(){ if(active!=='LeakHunt.App/Program.cs'){ await openFile('LeakHunt.App/Program.cs'); showTab('LeakHunt.App/Program.cs'); } const ta=$('#ed'); const L=ta.value.split('\n'); const R={cloud:/IChatClient chat = Backend\.Cloud\(\);/,local:/IChatClient chat = await Backend\.LocalAsync\(\);/,edge:/IChatClient chat = Backend\.Edge\(\);/}; const fl=[]; L.forEach((l,i)=>{ for(const [m,rx] of Object.entries(R)) if(rx.test(l)){ const body=l.replace(/^(\s*\/\/\s?)+/,''); const nl=m==='local'?body:'// '+body; if(nl!==l){ L[i]=nl; fl.push(i); } } }); if(!fl.length){ $('#cap').textContent='Already changed: the Local line is active. Click Save.'; } else { ta.value=L.join('\n'); files[active]=ta.value; const tb=tabs.find(t=>t.id===active); if(tb){ tb.dirty=true; renderTabs(); } hlSet=new Set(); renderEditor(fl); setOff(0,true); $('#cap').textContent='Changed in the editor: line 5 is a comment, line 6 is active. Now click Save.'; } const sv=$('#bSave'); sv.classList.remove('pulse'); void sv.offsetWidth; sv.classList.add('pulse'); }
+$('#bChg').onclick=()=>applyChange();
+function clearMon(note){ mon.innerHTML=''; monBuf=''; M.clearBase=M.outbound.length; $('#monsub').textContent='0 new request(s)'; w(mon,'<span class="gr">'+(note||'Cleared. Watching for new requests...')+'</span>\n'); }
+$('#clrMon').onclick=()=>clearMon('Cleared by you. Watching for new requests...');
+function suggest(v){ const i=$('#typed'); i.value=v||''; i.focus({preventScroll:true}); if(v) i.select(); }
+ document.addEventListener('DOMContentLoaded',()=>{});
+$('#bTog').onclick=()=>{ $('#ed').focus({preventScroll:true}); toggleSel(); }; $('#bSave').onclick=()=>saveProgram(); $('#bRev').onclick=async()=>{ await post('/api/revert'); files['LeakHunt.App/Program.cs']=await getFile('LeakHunt.App/Program.cs',true); const tb=tabs.find(t=>t.id==='LeakHunt.App/Program.cs'); if(tb) tb.dirty=false; $('#ed').value=files['LeakHunt.App/Program.cs']; renderTabs(); renderEditor(); M.mode='cloud'; M.fixTs=0; };
+$('#code').addEventListener('click',ev=>{ const nn=ev.target.closest('.n'); if(nn){ const r0=nn.closest('.row'); toggleLine(+r0.dataset.i); return; }  const r=ev.target.closest('.row'); if(!r||active!=='LeakHunt.App/Program.cs') return; const i=+r.dataset.i; if(ev.shiftKey&&anchor!==null){ selSet=new Set(); for(let j=Math.min(i,anchor);j<=Math.max(i,anchor);j++) selSet.add(j); } else { anchor=i; selSet=new Set([i]); } renderEditor(); });
+function toggleLine(i){ if(active!=='LeakHunt.App/Program.cs') return; const ta=$('#ed'); const L=ta.value.split('\n'); if(i<0||i>=L.length) return; let a0=0; for(let k=0;k<i;k++) a0+=L[k].length+1; ta.setSelectionRange(a0,a0+L[i].length); toggleSel(); }
+function toggleSel(){ if(active!=='LeakHunt.App/Program.cs') return; const ta=$('#ed'), v=ta.value; const s=v.slice(0,ta.selectionStart).split('\n').length-1; let e=v.slice(0,ta.selectionEnd).split('\n').length-1; if(ta.selectionEnd>ta.selectionStart&&v[ta.selectionEnd-1]==='\n') e--; if(e<s) e=s; const L=v.split('\n'); for(let i=s;i<=e;i++){ L[i]=/^\s*\/\//.test(L[i])?L[i].replace(/^(\s*)\/\/\s?/,'$1'):'// '+L[i]; } ta.value=L.join('\n'); let a0=0; for(let i=0;i<s;i++) a0+=L[i].length+1; let b0=a0; for(let i=s;i<=e;i++) b0+=L[i].length+(i<e?1:0); ta.setSelectionRange(a0,b0); files[active]=ta.value; const tb=tabs.find(t=>t.id===active); if(tb){ tb.dirty=true; renderTabs(); } const fl=[]; for(let i=s;i<=e;i++) fl.push(i); renderEditor(fl); }
+const _ta=$('#ed'); const isSlash=e=>e.key==='/'||e.key==='*'&&false||e.code==='Slash'||e.code==='NumpadDivide'||(e.code==='Digit7'&&e.shiftKey)||e.key==='-'&&e.code==='Slash';
+function ensureVis(){ const v=_ta.value; const line=v.slice(0,_ta.selectionStart).split('\n').length-1; const y=line*RH()+8, hh=$('#editor').clientHeight; if(y<scrollOff) setOff(y-8); else if(y+RH()>scrollOff+hh) setOff(y+RH()-hh+8); }
+_ta.addEventListener('input',()=>{ files[active]=_ta.value; const tb=tabs.find(t=>t.id===active); if(tb&&!tb.dirty){ tb.dirty=true; renderTabs(); } renderEditor(); ensureVis(); });
+_ta.addEventListener('keyup',ensureVis); _ta.addEventListener('click',ensureVis);
+_ta.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.ctrlKey&&isSlash(e)){ e.preventDefault(); toggleSel(); } else if(e.ctrlKey&&(e.key==='s'||e.key==='S')){ e.preventDefault(); saveProgram(); } else if(e.key==='Tab'){ e.preventDefault(); document.execCommand('insertText',false,'    '); } });
+$('#editor').addEventListener('wheel',e=>{ if(tabs.find(t=>t.id===active&&t.file)){ e.preventDefault(); setOff(scrollOff+e.deltaY); } },{passive:false});
+async function saveProgram(){ if(active!=='LeakHunt.App/Program.cs') return; const tb=tabs.find(t=>t.id===active); const r=await post('/api/save',{text:files[active]}); if(!r.ok){ $('#cap').textContent='Save refused: the file looks wrong (it must still reference Backend.).'; return; } tb.dirty=false; renderTabs(); w(app,'<span class="gr">Saved Program.cs</span>\n'); const st=await (await fetch('/api/state',{cache:'no-store'})).json(); M.mode=st.mode; if(st.mode==='local'&&!M.fixTs) M.fixTs=Date.now(); files[active]=await getFile(active,true); renderEditor(); }
+
+/* ---------- run report (computed from this session) ---------- */
+const fmt=ms=>(ms/1000).toFixed(1)+' s';
+function report(){
+  const cloud=M.asks.filter(a=>a.mode==='cloud'), loc=M.asks.filter(a=>a.mode==='local');
+  const ob=M.outbound; const det=ob.length?(stripAnsi(ob[0].block).match(/DETECTED IN THIS REQUEST:\s*(.*)/)||[])[1]||'':''; const kb=ob.length?(stripAnsi(ob[0].block).match(/\(([\d.]+) KB\)/)||[])[1]:'';
+  const readyEv=M.ev.filter(e=>e[0]==='ready'), runEv=M.ev.filter(e=>e[0]==='run');
+  const runLoc=runEv.find(e=>e[2]==='local'); const rdy=runLoc&&readyEv.find(e=>e[1]>runLoc[1]); const loadSec=rdy?fmt(rdy[1]-runLoc[1]):'n/a'; const cloudReq=ob.filter(o=>!M.fixTs||o.ts<=M.fixTs), newReq=ob.filter(o=>M.fixTs&&o.ts>M.fixTs);
+  const ext=M.ext; const ips=[...new Set(ext.map(e=>(e.text.match(/->\s*(\S+)/)||[])[1]).filter(Boolean))];
+  const lastExt=ext.length?ext[ext.length-1].ts:0, firstExt=ext.length?ext[0].ts:0;
+  const row=(a,b,c)=>`<tr><td>${a}</td><td>${b}</td><td>${c||''}</td></tr>`;
+  const ans=a=>a.done?fmt(a.done-a.t0):'no answer'; const ft=a=>a.first?fmt(a.first-a.t0):'-';
+  let h=`<h1>Run report</h1><div class="m2">Computed from the events of this session: build output, app output, traffic monitor, connection monitor and network probe.</div>`;
+  h+=`<h2>What leaked (cloud backend)</h2><table><tr><th>Check</th><th>Result</th><th>Where it comes from</th></tr>`;
+  h+=row('Requests seen by the traffic monitor', cloudReq.length?`<span class="r2">${cloudReq.length}</span>`:'0','EgressTrafficMonitor');
+  h+=row('Size of the outbound request', kb?kb+' KB':'-','monitor log');
+  h+=row('Sensitive items detected in it', det?`<span class="r2">${esc(det)}</span>`:'-','monitor detectors');
+  h+=`</table><h2>After the fix (local backend)</h2><table><tr><th>Check</th><th>Result</th><th>Where it comes from</th></tr>`;
+  h+=row('Code change','Program.cs: one line commented, one enabled','file diff in the editor');
+  h+=row('Builds run', M.build.length+' ('+M.build.map(b=>(b.sec||0).toFixed(1)+' s').join(', ')+')','dotnet build');
+  h+=row('Model loaded on this device', esc(M.model||'n/a'),'app output');
+  h+=row('Startup until ready', loadSec,'dotnet run to prompt');
+  h+=row('New requests at the traffic monitor', `<span class="g2">${newReq.length}</span>`,'EgressTrafficMonitor');
+  h+=row('Answer 1 (cloud) / answer 2 (local)', (cloud[0]?ans(cloud[0]):'-')+' / '+(loc[0]?ans(loc[0]):'-'),'time from asking to sources line');
+  h+=`</table><h2>Connections opened while the model loaded</h2><table><tr><th>Check</th><th>Result</th><th>Where it comes from</th></tr>`;
+  h+=row('External connections observed', ext.length?`<span class="r2">${ext.length}</span> lines`:'<span class="g2">0</span>','egress-connections');
+  h+=row('Remote endpoints', ips.length?esc(ips.slice(0,4).join(', '))+(ips.length>4?' ...':''):'-','port 443');
+  h+=row('Observed for', ext.length?fmt(lastExt-firstExt):'-','first to last line');
+  h+=`</table><div class="m2" style="margin-top:6px">The SDK opens HTTPS connections to Microsoft endpoints while it prepares the model. We did not inspect their content. The prompt itself went to 127.0.0.1.</div>`;
+  const off=loc.find(a=>M.net&&a.t0>M.net.ts);
+  h+=`<h2>Network cut</h2><table><tr><th>Check</th><th>Result</th></tr>`;
+  h+=`<tr><td>Network went offline during the session</td><td>${M.net?'<span class="g2">yes</span>':'<span class="r2">no</span>'}</td></tr>`;
+  h+=`<tr><td>Question asked after the cut</td><td>${off?esc(off.q):'-'}</td></tr>`;
+  h+=`<tr><td>Answered while offline</td><td>${off&&off.done?'<span class="g2">yes, in '+ans(off)+'</span>':'<span class="r2">no</span>'}</td></tr></table>`;
+  return h;
+}
+
+
+/* ---------- model comparison ---------- */
+const selModel=()=>($('#mdl')&&$('#mdl').value)||'phi-4-mini';
+async function loadModels(){ try{ const r=await (await fetch('/api/bench',{cache:'no-store'})).json(); const cur=selModel(); const al=[...new Set(['phi-3.5-mini','phi-4-mini','qwen2.5-1.5b',...r.models.map(m=>m.alias)])]; $('#mdl').innerHTML=al.map(a=>`<option ${a===cur?'selected':''}>${esc(a)}</option>`).join(''); }catch(_){} }
+const devOf=m=>/npu/i.test(m.modelId||'')?'NPU':/gpu/i.test(m.modelId||'')?'GPU':'CPU';
+async function compareHtml(){
+  let r={models:[],running:false,log:[]}; try{ r=await (await fetch('/api/bench',{cache:'no-store'})).json(); }catch(_){}
+  const ms=r.models.sort((a,b)=>b.abstain-a.abstain||a.avgTotalSec-b.avgTotalSec);
+  const best=(k,lo)=>{ const v=ms.map(m=>m[k]); return lo?Math.min(...v):Math.max(...v); };
+  const cell=(m,k,fmtf,lo)=>`<td class="${m[k]===best(k,lo)?'g2':''}">${fmtf(m[k])}</td>`;
+  let h=`<h1>Model comparison</h1><div class="m2">Same documents, same prompt, temperature 0, 13 questions: 10 can be answered from the documents, 3 cannot (traps). A good model says it does not know. Each model ran on this laptop with Foundry Local, one model per process. Green is the best value in a column. The same data, with the full method, is in reports/Benchmark_Report.md. Directional demo result, not a benchmark.</div>`;
+  h+=`<table><tr><th>Model</th><th>Device</th><th>Answerable (10)</th><th>Says I do not know (3)</th><th>Wrong on traps</th><th>Names source file</th><th>First token</th><th>Full answer</th><th>Load</th><th>Memory</th></tr>`;
+  ms.forEach(m=>{ h+=`<tr><td><b>${esc(m.alias)}</b></td><td>${devOf(m)}</td><td>${Math.round(m.accuracy/10)} of 10</td>${cell(m,'abstain',v=>Math.round(v/100*3)+' of 3')}${cell(m,'hallucinations',v=>v,true)}${cell(m,'citation',v=>Math.round(v)+'%')}${cell(m,'avgTtftSec',v=>v+' s',true)}${cell(m,'avgTotalSec',v=>v+' s',true)}${cell(m,'loadSec',v=>v+' s',true)}${cell(m,'workingSetMB',v=>(v/1024).toFixed(1)+' GB',true)}</tr>`; });
+  h+=`</table>`;
+  if(ms.length){ h+=`<h2>Question by question</h2><table><tr><th>#</th><th>Type</th><th>Question</th>`+ms.map(m=>`<th>${esc(m.alias)}</th>`).join('')+`</tr>`; ms[0].rows.forEach((q,i)=>{ h+=`<tr><td>${esc(q.id)}</td><td>${q.kind==='answer'?'answerable':'trap'}</td><td>${esc(q.text)}</td>`+ms.map(m=>{ const x=m.rows[i]; return x&&x.pass?'<td class="g2">PASS</td>':'<td class="r2">FAIL</td>'; }).join('')+`</tr>`; }); h+=`</table>`; }
+  const safe=ms.filter(m=>m.hallucinations===0).map(m=>m.alias), fast=[...ms].sort((a,b)=>a.avgTotalSec-b.avgTotalSec)[0];
+  h+=`<h2>How to read it</h2><table><tr><td>No wrong answers on traps</td><td>${safe.length?esc(safe.join(', ')):'none'}</td></tr><tr><td>Fastest full answer</td><td>${fast?esc(fast.alias)+' ('+fast.avgTotalSec+' s)':'-'}</td></tr><tr><td>Lesson</td><td>All models answer the easy questions. The difference is on questions the documents cannot answer: a wrong answer there is a leak or a lie. Measure on your own data before you pick.</td></tr></table>`;
+  h+=`<h2>Run a model live</h2><div class="m2">Runs the real benchmark on this laptop and writes reports/&lt;model&gt;.json. A cached model takes 1 to 4 minutes; a new model downloads first.</div><div style="margin:8px 0">`+['phi-4-mini','qwen2.5-1.5b','mistral-7b-v0.2','phi-3.5-mini'].map(a=>`<button class="chip go" data-bench="${esc(a)}" style="margin-right:6px">Run ${esc(a)}</button>`).join('')+`</div><pre id="benchlog" class="m2">${r.running?'Running '+esc(r.alias)+' ...':'Idle'}</pre>`;
+  return h;
+}let benchPoll=null;
+function pollBench(){ clearInterval(benchPoll); benchPoll=setInterval(async()=>{ try{ const r=await (await fetch('/api/bench',{cache:'no-store'})).json(); const el=$('#benchlog'); if(el) el.textContent=(r.running?'Running '+r.alias+' ...\n':'Finished\n')+r.log.join('\n'); if(!r.running){ clearInterval(benchPoll); const t=tabs.find(x=>x.id==='compare'); if(t){ t.html=await compareHtml(); if(active==='compare') showTab('compare'); } } }catch(_){} },2500); }
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-bench]'); if(!b) return; await post('/api/bench',{alias:b.dataset.bench}); pollBench(); });
+loadModels();
+document.addEventListener('DOMContentLoaded',()=>{ const b=document.getElementById('wifiBtn'); if(b) b.onclick=wifiToggle; });
+
+/* ---------- step jump, restart ---------- */
+let jumping=false;
+async function replayCloud(){
+  $('#cap').textContent='Restoring this step: building and starting the app in cloud mode...';
+  w(app,`\n<span class="p">${PS}</span><span class="cmd">dotnet build</span>\n`); await post('/api/build'); try{ await waitState('build'); }catch(_){}
+  const st=await (await fetch('/api/state',{cache:'no-store'})).json(); M.mode=st.mode||M.mode;
+  w(app,`<span class="p">${PS}</span><span class="cmd">dotnet run</span>\n`); M.ev.push(['run',Date.now(),M.mode]);
+  const p=waitState('ready'); await post('/api/run',{model:selModel()}); try{ await p; }catch(_){}
+}
+async function jumpTo(n){
+  if(jumping||n>=step) return; jumping=true;
+  try{
+    let target=n;
+    if(n>=5){ const st=await (await fetch('/api/state',{cache:'no-store'})).json(); if(!(st.ready&&st.mode==='local')) target=4; }
+    if(target>=1&&target<=4){ await reset(); if(target>=3) await replayCloud(); }
+    await runStep(target);
+  } finally { jumping=false; }
+}
+$('#gprog').addEventListener('click',e=>{ const i=e.target.closest('i[data-s]'); if(i&&i.classList.contains('done')) jumpTo(+i.dataset.s); });
+addEventListener('click',e=>{ if(e.target&&e.target.id==='restartBtn'){ runStep(0); } });
+
+/* ---------- text size and magnifier ---------- */
+const FZ=[1,1.15,1.3,1.5,1.75,2];
+let fzi=Math.max(0,FZ.indexOf(+localStorage.getItem('lab.fz')));
+const RH=()=>26*(parseFloat($('#editor').style.getPropertyValue('--fz'))||FZ[fzi]);
+let focusEl=null;
+function refit(){ if(tabs.find(t=>t.id===active&&t.file)){ renderEditor(); setOff(scrollOff); } }
+function applyFz(){ const z=FZ[fzi], r=document.documentElement.style; r.setProperty('--fz',z); $('#zVal').textContent=Math.round(z*100)+'%'; try{ localStorage.setItem('lab.fz',z); }catch(_){}
+  if(focusEl) focusEl.style.setProperty('--fz',(z*1.45).toFixed(3)); refit(); }
+function zoomBy(d){ fzi=Math.max(0,Math.min(FZ.length-1,fzi+d)); applyFz(); }
+function setFocus(el){ clearFocus(); focusEl=el; el.classList.add('focus'); el.style.setProperty('--fz',(FZ[fzi]*1.45).toFixed(3)); el.querySelectorAll('.pb').forEach(b=>b.scrollTop=b.scrollHeight); if(el.id==='editor') refit(); }
+function clearFocus(){ if(!focusEl) return; const el=focusEl; focusEl=null; el.classList.remove('focus'); el.style.removeProperty('--fz'); el.querySelectorAll('.pb').forEach(b=>b.scrollTop=b.scrollHeight); if(el.id==='editor') refit(); }
+function toggleFocus(el){ if(focusEl===el) clearFocus(); else setFocus(el); }
+$('#zIn').onclick=()=>zoomBy(1); $('#zOut').onclick=()=>zoomBy(-1);
+$('#bMag').onclick=()=>toggleFocus($('#editor'));
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('.mag[data-focus]'); if(b) toggleFocus(b.closest('.pane')); });
+document.addEventListener('dblclick',e=>{ const h=e.target.closest&&e.target.closest('.ph'); if(h&&h.closest('.pane')&&!e.target.closest('button,select')) toggleFocus(h.closest('.pane')); });
+addEventListener('keydown',e=>{ if(e.key==='Escape'&&focusEl){ e.preventDefault(); e.stopPropagation(); clearFocus(); return; }
+  if(e.ctrlKey&&(e.key==='+'||e.key==='=')){ e.preventDefault(); e.stopPropagation(); zoomBy(1); }
+  else if(e.ctrlKey&&(e.key==='-'||e.key==='_')){ e.preventDefault(); e.stopPropagation(); zoomBy(-1); }
+  else if(e.ctrlKey&&e.key==='0'){ e.preventDefault(); e.stopPropagation(); fzi=0; applyFz(); } },true);
+addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); e.stopPropagation(); zoomBy(e.deltaY<0?1:-1); } },{passive:false,capture:true});
+applyFz();
+
+/* ---------- input / keys ---------- */
+let appRunning=false;
+const hist=[]; let hi=-1, hlist=[];
+const CTX={2:['dotnet run','dotnet build'],3:[Q1],4:['dotnet run','dotnet build'],5:[Q1],6:[Q2]};
+function histList(){ let c=CTX[step]||[]; if(step===2||step===4) c=hist[hist.length-1]==='dotnet build'?['dotnet run','dotnet build']:['dotnet build','dotnet run']; return [...c,...hist.slice().reverse().filter(x=>!c.includes(x))]; }
+$('#typed').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='ArrowUp'||(e.key==='ArrowDown'&&hi>=0)){ e.preventDefault(); if(hi<0) hlist=histList(); if(e.key==='ArrowUp') hi=Math.min(hlist.length-1,hi+1); else hi--; e.target.value=hi>=0?hlist[hi]:''; if(hi<0) hlist=[]; return; } if(e.key!=='Enter'&&e.key!=='Shift'&&e.key!=='Control') hi=-1; const allSel=!e.target.value||(e.target.selectionStart===0&&e.target.selectionEnd===e.target.value.length); if(e.key==='PageDown'||(allSel&&e.key==='ArrowRight')){ e.preventDefault(); go(1); return; } if(e.key==='PageUp'||(allSel&&e.key==='ArrowLeft')){ e.preventDefault(); go(-1); return; } if(e.key==='Escape'){ e.target.blur(); return; } if(e.ctrlKey&&(e.key==='c'||e.key==='C')){ e.preventDefault(); post('/api/edit',{mode:M.mode}); w(app,'<span class="gr">^C</span>\n'); appRunning=false; return; } if(e.key==='Enter'&&e.target.value.trim()){ const q=e.target.value.trim(); e.target.value=''; hi=-1; if(hist[hist.length-1]!==q) hist.push(q); if(/^dotnet\s+build\b/i.test(q)) suggest('dotnet run'); else if(/^dotnet\s+run\b/i.test(q)) suggest(step>=6?Q2:Q1); else suggest(''); (async()=>{
+  const st=await (await fetch('/api/state',{cache:'no-store'})).json();
+  if(st.ready){ const a={q,t0:Date.now(),first:0,done:0,mode:M.mode}; a.promise=new Promise(r=>a.resolve=r); awaiting=a; w(app,esc(q)+'\n'); M.asks.push(a); await post('/api/ask',{text:q}); return; }
+  w(app,`\n<span class="p">${PS}</span><span class="cmd">${esc(q)}</span>\n`);
+  if(/^dotnet\s+build\b/i.test(q)){ await post('/api/build'); try{ await waitState('build'); }catch(_){} }
+  else if(/^dotnet\s+run\b/i.test(q)){ M.mode=st.mode||M.mode; M.ev.push(['run',Date.now(),M.mode]); const p=waitState('ready'); let tk=null; if(M.mode==='local'){ const t0=Date.now(); tk=setInterval(()=>{ $('#appsub').textContent='loading the model on this laptop... '+Math.round((Date.now()-t0)/1000)+' s'; },500); } await post('/api/run',{model:selModel()}); try{ await p; }catch(_){} if(tk){ clearInterval(tk); $('#appsub').textContent='powershell'; } }
+  else if(/^(cls|clear)$/i.test(q)){ app.innerHTML=''; }
+  else w(app,'<span class="bad">This lab terminal runs: dotnet build, dotnet run, cls</span>\n');
+ })(); } });
+addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c) return; if(c.dataset.act==='change'){ applyChange(); return; } const v=c.dataset.q?QS[c.dataset.q]:c.dataset.fill; const i=$('#typed'); i.value=v; i.focus({preventScroll:true}); });
+addEventListener('keydown',e=>{ if(e.target&&(e.target.id==='typed'||e.target.id==='ed')) return; const k=e.key;
+ if(e.ctrlKey&&k==='/'){ e.preventDefault(); toggleSel(); return; }
+ if(e.ctrlKey&&(k==='s'||k==='S')){ e.preventDefault(); saveProgram(); return; }
+ if(k==='ArrowRight'||k==='PageDown'||k===' '||k==='Enter'){ e.preventDefault(); go(1); } else if(k==='ArrowLeft'||k==='PageUp'||k==='Backspace'){ e.preventDefault(); go(-1); } else if(k==='r'||k==='R'){ runStep(0); }  else if(k==='f'||k==='F'){ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); } });
+(async()=>{ try{ const r=await fetch('/api/state',{cache:'no-store'}); const s=await r.json(); online=s.online; setNet(s.online); connect(); const h=parseInt((location.hash||'#0').slice(1)); runStep(0); }catch(e){ $('#overlay').style.display='flex'; $('#overlay').innerHTML='The lab server is not running.<br>Double-click live\\Start_Lab.cmd, then reload this page.'; } })();
+</script>
+</body>
+</html>

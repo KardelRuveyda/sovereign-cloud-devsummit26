@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="EgressTrafficMonitor/EgressTrafficMonitor.csproj" />
+  <Project Path="LeakHunt.App/LeakHunt.App.csproj" />
+  <Project Path="LeakHunt.Bench/LeakHunt.Bench.csproj" />
+</Solution>

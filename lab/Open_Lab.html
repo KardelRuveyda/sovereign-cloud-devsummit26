@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Opening the Lab</title>
+<style>
+html,body{margin:0;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:"Segoe UI",Arial,sans-serif}
+.w{max-width:900px;margin:0 auto;padding:90px 40px}
+h1{font-size:38px;margin:0 0 10px;color:#fff}h1 span{color:#59b8ff}
+p{font-size:21px;line-height:1.55;color:#bdbdbd}
+.box{border:1px solid #3c3c3c;border-radius:10px;background:#252526;padding:22px 28px;margin:26px 0;display:none}
+code{background:#333;padding:2px 8px;border-radius:5px;color:#e5c07b}
+.ok{color:#4ec96b}.bad{color:#f14c4c}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#e5c07b;margin-right:10px;animation:b 1s infinite}
+@keyframes b{50%{opacity:.25}}
+</style></head><body><div class="w">
+<h1>LEAK <span>HUNT</span> Lab</h1>
+<p id="st"><span class="dot"></span>Looking for the lab server on this machine...</p>
+<div class="box" id="help">
+<p class="bad"><b>The lab server is not running.</b></p>
+<p>Double-click <code>lab\Start_Lab.cmd</code> in the LeakHunt folder. This page keeps checking and opens the lab by itself as soon as the server answers.</p>
+</div></div>
+<script>
+let tries=0;
+async function probe(){
+  try{ await fetch('http://127.0.0.1:8770/api/state',{mode:'no-cors',cache:'no-store'});
+       document.getElementById('st').innerHTML='<span class="ok">Server found. Opening the lab...</span>'; location.replace('http://127.0.0.1:8770/'); return; }
+  catch(e){ tries++; if(tries>=2){ document.getElementById('help').style.display='block'; document.getElementById('st').innerHTML='<span class="dot"></span>Waiting for the lab server...'; } setTimeout(probe,1500); }
+}
+probe();
+</script></body></html>
