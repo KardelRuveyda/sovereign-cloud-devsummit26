@@ -19,6 +19,7 @@ This repository is the companion material for a conference talk about sovereign 
 ## Contents
 
 1. [Preview](#preview)
+   - [Slides](#slides)
 2. [The idea in one minute](#the-idea-in-one-minute)
 3. [Architecture](#architecture)
 4. [Requirements](#requirements)
@@ -46,6 +47,10 @@ The lab is a browser page that drives the real app, the real build and the real 
 | ![Step 0: meet the app](docs/img/1-meet-the-app.png) **0. Meet the app**: read the loop in `Program.cs` | ![Step 3: hunt](docs/img/2-hunt-what-leaves.png) **3. Hunt**: the monitor shows the full request that left the app |
 | ![Step 4: fix](docs/img/4-fix-one-line.png) **4. Fix**: change one line, rebuild, load a local model | ![Step 5: prove](docs/img/5-prove-it.png) **5. Prove it**: same question, no new request at the monitor |
 | ![Step 7: report](docs/img/6-run-report.png) **7. Results**: a report computed from what really happened | ![Step 7: model comparison](docs/img/7-model-comparison.png) **7. Results**: four small models compared on 13 questions |
+
+## Slides
+
+The slides of the talk are in [presentation/Sovereign_Cloud_and_AI_DevSummit_2026.pdf](presentation/Sovereign_Cloud_and_AI_DevSummit_2026.pdf) (38 slides, PDF without speaker notes). They cover why data sovereignty matters for AI, Microsoft's sovereign cloud approach, Azure Local, Foundry Local, and Foundry Local on Azure Local (preview), and lead into this lab. The slides are the speaker's personal view for a community conference; features marked as preview may change.
 
 ## The idea in one minute
 
@@ -358,6 +363,7 @@ egress-connections.ps1    Shows every remote connection opened by the demo proce
 lab/                      The lab: lab.html (UI), server.js (local server), wifi.ps1, Start_Lab.cmd, Stop_Lab.cmd, Open_Lab.html
 docs/img/                 Screenshots used in this README
 reports/                  Benchmark results (JSON per model), Benchmark_Report.md, make_report.py
+presentation/             Slides of the talk (PDF)
 LeakHunt.slnx             Solution file
 LICENSE                   MIT
 ```
